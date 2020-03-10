@@ -7,19 +7,20 @@
 
 /* clang-format off */
 
-#define TEXT_WINDOW_CAPTURE obs_module_text("WindowCapture")
-#define TEXT_WINDOW         obs_module_text("WindowCapture.Window")
-#define TEXT_METHOD         obs_module_text("WindowCapture.Method")
-#define TEXT_METHOD_AUTO    obs_module_text("WindowCapture.Method.Auto")
-#define TEXT_METHOD_BITBLT  obs_module_text("WindowCapture.Method.BitBlt")
-#define TEXT_METHOD_WGC     obs_module_text("WindowCapture.Method.WindowsGraphicsCapture")
-#define TEXT_MATCH_PRIORITY obs_module_text("WindowCapture.Priority")
-#define TEXT_MATCH_TITLE    obs_module_text("WindowCapture.Priority.Title")
-#define TEXT_MATCH_CLASS    obs_module_text("WindowCapture.Priority.Class")
-#define TEXT_MATCH_EXE      obs_module_text("WindowCapture.Priority.Exe")
-#define TEXT_CAPTURE_CURSOR obs_module_text("CaptureCursor")
-#define TEXT_COMPATIBILITY  obs_module_text("Compatibility")
-#define TEXT_CLIENT_AREA    obs_module_text("ClientArea")
+#define TEXT_WINDOW_CAPTURE      obs_module_text("WindowCapture")
+#define TEXT_WINDOW              obs_module_text("WindowCapture.Window")
+#define TEXT_METHOD              obs_module_text("WindowCapture.Method")
+#define TEXT_METHOD_AUTO         obs_module_text("WindowCapture.Method.Auto")
+#define TEXT_METHOD_BITBLT       obs_module_text("WindowCapture.Method.BitBlt")
+#define TEXT_METHOD_PRINT_WINDOW obs_module_text("WindowCapture.Method.PrintWindow")
+#define TEXT_METHOD_WGC          obs_module_text("WindowCapture.Method.WindowsGraphicsCapture")
+#define TEXT_MATCH_PRIORITY      obs_module_text("WindowCapture.Priority")
+#define TEXT_MATCH_TITLE         obs_module_text("WindowCapture.Priority.Title")
+#define TEXT_MATCH_CLASS         obs_module_text("WindowCapture.Priority.Class")
+#define TEXT_MATCH_EXE           obs_module_text("WindowCapture.Priority.Exe")
+#define TEXT_CAPTURE_CURSOR      obs_module_text("CaptureCursor")
+#define TEXT_COMPATIBILITY       obs_module_text("Compatibility")
+#define TEXT_CLIENT_AREA         obs_module_text("ClientArea")
 
 /* clang-format on */
 
@@ -42,6 +43,7 @@ struct winrt_exports {
 enum window_capture_method {
 	METHOD_AUTO,
 	METHOD_BITBLT,
+	METHOD_PRINT_WINDOW,
 	METHOD_WGC,
 };
 
@@ -268,7 +270,7 @@ static void update_settings_visibility(obs_properties_t *props,
 				       struct window_capture *wc)
 {
 	const enum window_capture_method method = wc->method;
-	const bool bitblt_options = method == METHOD_BITBLT;
+	const bool bitblt_options = method != METHOD_WGC;
 	const bool wgc_options = method == METHOD_WGC;
 
 	const bool wgc_cursor_toggle =
@@ -332,6 +334,7 @@ static obs_properties_t *wc_properties(void *data)
 				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, TEXT_METHOD_AUTO, METHOD_AUTO);
 	obs_property_list_add_int(p, TEXT_METHOD_BITBLT, METHOD_BITBLT);
+	obs_property_list_add_int(p, TEXT_METHOD_PRINT_WINDOW, METHOD_PRINT_WINDOW);
 	obs_property_list_add_int(p, TEXT_METHOD_WGC, METHOD_WGC);
 	obs_property_list_item_disable(p, 2, !wc->wgc_supported);
 	obs_property_set_modified_callback(p, wc_capture_method_changed);
@@ -439,7 +442,7 @@ static void wc_tick(void *data, float seconds)
 
 	obs_enter_graphics();
 
-	if (wc->method == METHOD_BITBLT) {
+	if (wc->method == METHOD_BITBLT || wc->method == METHOD_PRINT_WINDOW) {
 		GetClientRect(wc->window, &rect);
 
 		if (!reset_capture) {
@@ -468,7 +471,11 @@ static void wc_tick(void *data, float seconds)
 					wc->compatibility);
 		}
 
-		dc_capture_capture(&wc->capture, wc->window);
+		if (wc->method == METHOD_BITBLT) {
+			dc_capture_capture(&wc->capture, wc->window);
+		} else {// Must be print window
+			PrintWindow(wc->window, wc->capture.hdc, PW_CLIENTONLY);
+		}
 	} else if (wc->method == METHOD_WGC) {
 		if (wc->window && (wc->capture_winrt == NULL)) {
 			wc->capture_winrt = wc->exports.winrt_capture_init(
