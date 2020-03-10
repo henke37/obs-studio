@@ -284,7 +284,7 @@ static void update_settings_visibility(obs_properties_t *props,
 	obs_property_set_visible(p, bitblt_options);
 
 	p = obs_properties_get(props, "client_area");
-	obs_property_set_visible(p, wgc_options);
+	obs_property_set_visible(p, method == METHOD_PRINT_WINDOW || method== METHOD_WGC);
 }
 
 static bool wc_capture_method_changed(obs_properties_t *props,
@@ -474,7 +474,8 @@ static void wc_tick(void *data, float seconds)
 		if (wc->method == METHOD_BITBLT) {
 			dc_capture_capture(&wc->capture, wc->window);
 		} else {// Must be print window
-			PrintWindow(wc->window, wc->capture.hdc, PW_CLIENTONLY);
+			PrintWindow(wc->window, wc->capture.hdc,
+				    wc->client_area?PW_CLIENTONLY:0);
 		}
 	} else if (wc->method == METHOD_WGC) {
 		if (wc->window && (wc->capture_winrt == NULL)) {
