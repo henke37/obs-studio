@@ -3066,6 +3066,30 @@ static const AVal av_NetStream_Publish_Start = AVC("NetStream.Publish.Start");
 static const AVal av_NetStream_Publish_Rejected = AVC("NetStream.Publish.Rejected");
 static const AVal av_NetStream_Publish_Denied = AVC("NetStream.Publish.Denied");
 
+static void FindAndRemoveMethodCallByName(RTMP *r, AVal *name, int freeIt) {
+    int i;
+    for (i = 0; i < r->m_numCalls; i++)
+    {
+        if (AVMATCH(&r->m_methodCalls[i].name, name))
+        {
+            AV_erase(r->m_methodCalls, &r->m_numCalls, i, freeIt);
+            break;
+        }
+    }
+}
+static AVal FindAndRemoveMethodCallByNum(RTMP *r, int num, int freeIt) {
+    int i;
+    for (i=0; i<r->m_numCalls; i++)
+    {
+        if (r->m_methodCalls[i].num == num)
+        {
+           AVal methodName = r->m_methodCalls[i].name;
+           AV_erase(r->m_methodCalls, &r->m_numCalls, i, freeIt);
+           return methodName;
+        }
+    }
+}
+
 /* Returns 0 for OK/Failed/error, 1 for 'Stop or Complete' */
 static int
 HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
@@ -3095,18 +3119,8 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
 
     if (AVMATCH(&method, &av__result))
     {
-        AVal methodInvoked = {0};
-        int i;
+        AVal methodInvoked = FindAndRemoveMethodCallByNum(r, (int)txn, FALSE);
 
-        for (i=0; i<r->m_numCalls; i++)
-        {
-            if (r->m_methodCalls[i].num == (int)txn)
-            {
-                methodInvoked = r->m_methodCalls[i].name;
-                AV_erase(r->m_methodCalls, &r->m_numCalls, i, FALSE);
-                break;
-            }
-        }
         if (!methodInvoked.av_val)
         {
             RTMP_Log(RTMP_LOGDEBUG, "%s, received result id %f without matching request",
@@ -3208,13 +3222,7 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
     }
     else if (AVMATCH(&method, &av__onbwdone))
     {
-        int i;
-        for (i = 0; i < r->m_numCalls; i++)
-            if (AVMATCH(&r->m_methodCalls[i].name, &av__checkbw))
-            {
-                AV_erase(r->m_methodCalls, &r->m_numCalls, i, TRUE);
-                break;
-            }
+        FindAndRemoveMethodCallByName(r, &av__checkbw, TRUE);
     }
     else if (AVMATCH(&method, &av__error))
     {
@@ -3224,15 +3232,7 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
 
         if (r->Link.protocol & RTMP_FEATURE_WRITE)
         {
-            for (i=0; i<r->m_numCalls; i++)
-            {
-                if (r->m_methodCalls[i].num == txn)
-                {
-                    methodInvoked = r->m_methodCalls[i].name;
-                    AV_erase(r->m_methodCalls, &r->m_numCalls, i, FALSE);
-                    break;
-                }
-            }
+            methodInvoked = FindAndRemoveMethodCallByNum(r, txn, FALSE);
             if (!methodInvoked.av_val)
             {
                 RTMP_Log(RTMP_LOGDEBUG, "%s, received result id %f without matching request",
@@ -3343,30 +3343,13 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
         else if (AVMATCH(&code, &av_NetStream_Play_Start)
                  || AVMATCH(&code, &av_NetStream_Play_PublishNotify))
         {
-            int i;
+            FindAndRemoveMethodCallByName(r, &av_play, TRUE);
             r->m_bPlaying = TRUE;
-            for (i = 0; i < r->m_numCalls; i++)
-            {
-                if (AVMATCH(&r->m_methodCalls[i].name, &av_play))
-                {
-                    AV_erase(r->m_methodCalls, &r->m_numCalls, i, TRUE);
-                    break;
-                }
-            }
         }
 
         else if (AVMATCH(&code, &av_NetStream_Publish_Start))
         {
-            int i;
-            r->m_bPlaying = TRUE;
-            for (i = 0; i < r->m_numCalls; i++)
-            {
-                if (AVMATCH(&r->m_methodCalls[i].name, &av_publish))
-                {
-                    AV_erase(r->m_methodCalls, &r->m_numCalls, i, TRUE);
-                    break;
-                }
-            }
+            FindAndRemoveMethodCallByName(r, &av_publish, TRUE);
         }
 
         /* Return 1 if this is a Play.Complete or Play.Stop */
@@ -3394,15 +3377,7 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
     }
     else if (AVMATCH(&method, &av_playlist_ready))
     {
-        int i;
-        for (i = 0; i < r->m_numCalls; i++)
-        {
-            if (AVMATCH(&r->m_methodCalls[i].name, &av_set_playlist))
-            {
-                AV_erase(r->m_methodCalls, &r->m_numCalls, i, TRUE);
-                break;
-            }
-        }
+        FindAndRemoveMethodCallByName(r, &av_set_playlist, TRUE);
     }
     else
     {
