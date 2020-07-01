@@ -47,6 +47,8 @@
 #define SOCKET int
 #endif
 
+#include "../rtmp-stream.h"
+
 #include "amf.h"
 
 #ifdef CRYPTO
@@ -455,6 +457,7 @@ extern "C"
 #ifdef CRYPTO
         TLS_CTX RTMP_TLS_ctx;
 #endif
+        struct rtmp_stream *stream;
     } RTMP;
 
     int RTMP_ParseURL(const char *url, int *protocol, AVal *host,
@@ -505,7 +508,7 @@ extern "C"
     int RTMP_GetNextMediaPacket(RTMP *r, RTMPPacket *packet);
     int RTMP_ClientPacket(RTMP *r, RTMPPacket *packet);
 
-    void RTMP_Init(RTMP *r);
+    void RTMP_Init(RTMP *r, struct rtmp_stream *stream);
     void RTMP_Close(RTMP *r);
     RTMP *RTMP_Alloc(void);
     void RTMP_TLS_Free(RTMP *r);

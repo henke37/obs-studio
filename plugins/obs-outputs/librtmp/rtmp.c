@@ -453,7 +453,7 @@ RTMP_Free(RTMP *r)
 }
 
 void
-RTMP_Init(RTMP *r)
+RTMP_Init(RTMP *r, struct rtmp_stream *stream)
 {
     memset(r, 0, sizeof(RTMP));
     r->m_sb.sb_socket = -1;
@@ -475,6 +475,7 @@ RTMP_Init(RTMP *r)
     RTMP_TLS_Init(r);
 #endif
 
+    r->stream=stream;
 }
 
 void
