@@ -187,6 +187,7 @@ static void *rtmp_stream_create(obs_data_t *settings, obs_output_t *output)
 
 	signal_handler_t *s=obs_output_get_signal_handler(output);
 	signal_handler_add(s, "void rtmp_onStatus(string code, string level, string description)");
+	signal_handler_add(s, "void rtmp_onCall(string name, ptr args)");
 
 	UNUSED_PARAMETER(settings);
 	return stream;

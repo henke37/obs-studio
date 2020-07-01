@@ -3381,7 +3381,21 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
     }
     else
     {
+        AVal methodInvoked = FindAndRemoveMethodCallByNum(r, (int)txn, FALSE);
+        
+        AMFObject obj2;
+        AMFProp_GetObject(AMF_GetProp(&obj, NULL, 3), &obj2);
 
+        signal_handler_t *s=obs_output_get_signal_handler(r->stream->output);
+
+        struct calldata cd;
+        calldata_create(&cd);
+        calldata_set_string(&cd, "name", methodInvoked.av_val);
+        calldata_set_ptr(&cd, "args", &obj2);
+
+        signal_handler_signal(s, "rtmp_onCall", &cd);
+
+        calldata_free(&cd);
     }
 leave:
     AMF_Reset(&obj);
