@@ -3309,6 +3309,20 @@ HandleInvoke(RTMP *r, const char *body, unsigned int nBodySize)
         AMFProp_GetString(AMF_GetProp(&obj2, &av_level, -1), &level);
         AMFProp_GetString(AMF_GetProp(&obj2, &av_description, -1), &description);
 
+        {
+            struct calldata cd;
+            calldata_init(&cd);
+
+            calldata_set_string(&cd,"code",code.av_val);
+            calldata_set_string(&cd,"level",level.av_val);
+            calldata_set_string(&cd,"description",description.av_val);
+
+            signal_handler_t *s=obs_output_get_signal_handler(r->stream->output);
+            signal_handler_signal(s, "rtmp_onStatus", &cd);
+
+            calldata_free(&cd);            
+        }
+
         RTMP_Log(RTMP_LOGDEBUG, "%s, onStatus: %s", __FUNCTION__, code.av_val);
         if (AVMATCH(&code, &av_NetStream_Failed)
                 || AVMATCH(&code, &av_NetStream_Play_Failed)
